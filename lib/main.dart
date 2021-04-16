@@ -78,6 +78,7 @@ class _GameState extends State<Game> {
   ];
   final List<int> spaceShipCoordinate = [247];
   final List<int> bullet = [];
+  final List<int> barrier = [198, 199, 200, 201, 202, 203];
   final List<String> imageArray = [
     ...invader1,
     ...invader2,
@@ -88,13 +89,15 @@ class _GameState extends State<Game> {
 
   void gameStart() {
     Timer.periodic(Duration(milliseconds: 600), (timer) {
-      alienMovies();
+      invaderMovement();
     });
+
+    attackInvaders();
   }
 
   String direction = "right";
 
-  void alienMovies() {
+  void invaderMovement() {
     setState(() {
       if ((invaderListCoordinate[0] - 1) % 15 == 0) {
         direction = "right";
@@ -170,7 +173,7 @@ class _GameState extends State<Game> {
                       ),
                     ),
                     SizedBox(
-                      width: 120,
+                      width: 60,
                       child: RaisedButton(
                         child: Icon(
                           Icons.local_fire_department,
@@ -183,6 +186,15 @@ class _GameState extends State<Game> {
                       ),
                     ),
                     SizedBox(
+                      width: 60,
+                      child: RaisedButton(
+                        child: Text("STR"),
+                        onPressed: () {
+                          gameStart();
+                        },
+                      ),
+                    ),
+                    SizedBox(
                       width: 120,
                       child: RaisedButton(
                         child: Icon(
@@ -191,7 +203,7 @@ class _GameState extends State<Game> {
                           color: Colors.black,
                         ),
                         onPressed: () {
-                          gameStart();
+                          spaceMoveRight();
                         },
                       ),
                     ),
@@ -228,6 +240,14 @@ class _GameState extends State<Game> {
           return Container(
             color: Colors.green,
           );
+        } else if (invaderAttack == index) {
+          return Container(
+            color: Colors.red,
+          );
+        } else if (barrier.contains(index)) {
+          return Container(
+            color: Colors.orangeAccent,
+          );
         } else {
           return Padding(
               padding: EdgeInsets.all(1),
@@ -244,56 +264,100 @@ class _GameState extends State<Game> {
     );
   }
 
+  int invaderAttack;
+  bool timeNext = false;
+  void invaderBullet() {
+    setState(() {
+      invaderAttack += 15;
+      if (invaderAttack > 300) {
+        timeNext = true;
+      }
+    });
+  }
+
+  bool attack = true;
+  void attackInvaders() {
+    invaderAttack = invaderListCoordinate.last;
+    attack = !attack;
+    if (attack) {
+      invaderAttack = invaderListCoordinate.last;
+    } else {
+      invaderAttack = invaderListCoordinate.first;
+    }
+
+    Timer.periodic(Duration(milliseconds: 180), (timer) {
+      invaderBullet();
+      barriersAndSpaceShipCollision();
+      if (timeNext) {
+        invaderAttack = invaderListCoordinate.last - 5;
+        timeNext = false;
+      }
+    });
+  }
+
+  void barriersAndSpaceShipCollision() {
+    if (barrier.contains(invaderAttack)) {
+      barrier.remove(invaderAttack);
+    }
+    if (spaceShipCoordinate.first == invaderAttack) {
+      print("collision spaceShip");
+    }
+  }
+
   void burn() {
-    Timer.periodic(Duration(milliseconds: 150), (timer) {
+    Timer.periodic(Duration(milliseconds: 180), (timer) {
       setState(() {
-        for (int i = 0; i < bullet.length; i++) {
-          bullet[i] -= 15;
+        bullet.first -= 15;
 
-          var collisionInvaders = invaderListCoordinate.contains(bullet[i]);
-
-          if (collisionInvaders || bullet[i] < 0) {
-            invaderListCoordinate.removeWhere((invader) => invader == bullet[i]);
-            //bullet removed
-            bullet.removeAt(0);
-            timer.cancel();
-          }
-        }
+        invaderAndBarriersCollision(timer);
       });
     });
 
     spaceShipCoordinateBullet();
   }
 
+  void invaderAndBarriersCollision(Timer timer) {
+    var collisionInvaders = invaderListCoordinate.contains(bullet.first);
+
+    if (collisionInvaders || bullet.first < 0) {
+      invaderListCoordinate.removeWhere((invader) => invader == bullet.first);
+      bullet.removeAt(0);
+      timer.cancel();
+    } else if (bullet.first == invaderAttack) {
+      //bullet[i] = -1;
+    } else if (barrier.contains(bullet.first)) {
+      barrier.remove(bullet.first);
+      bullet.first = -1;
+    }
+  }
+
   void spaceShipCoordinateBullet() {
     var current;
-
     setState(() {
-      for (int i = 0; i < spaceShipCoordinate.length; i++) {
+      /* for (int i = 0; i < spaceShipCoordinate.length; i++) {
         current = spaceShipCoordinate[i];
         bullet.add(current);
         return current;
-      }
+      }*/
+
+      current = spaceShipCoordinate.first;
+      bullet.add(current);
+      return current;
     });
-    print(bullet);
   }
 
-  int leftCurrentShip;
   void spaceMoveLeft() {
     setState(() {
       for (int i = 0; i < spaceShipCoordinate.length; i++) {
         spaceShipCoordinate[i] -= 1;
-        leftCurrentShip = spaceShipCoordinate[i];
       }
     });
   }
 
-  int rightCurrentShip;
   void spaceMoveRight() {
     setState(() {
       for (int i = 0; i < spaceShipCoordinate.length; i++) {
         spaceShipCoordinate[i] += 1;
-        rightCurrentShip = spaceShipCoordinate[i];
       }
     });
   }
